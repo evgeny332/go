@@ -85,7 +85,6 @@ func reset(client *horizonclient.Client, keys []key) {
 		fmt.Println(resp.TransactionSuccessToString())
 		sourceAccount.SequenceNumber++
 	}
-	os.Exit(0)
 
 	// Merge the account
 	txe, err := mergeAccount(sourceAccount, keys[3], keys[0])
