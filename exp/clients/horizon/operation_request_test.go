@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -68,7 +69,49 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 	assert.Equal(t, "payments?cursor=123456&limit=30&order=asc", endpoint)
 }
 
-func TestOperationRequestStream(t *testing.T) {
+func ExampleClient_StreamOperations() {
+	client := DefaultTestNetClient
+	// operations for an account
+	opRequest := OperationRequest{ForAccount: "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", Cursor: "760209215489"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(op operations.Operation) {
+		fmt.Println(op)
+	}
+	err := client.StreamOperations(ctx, opRequest, printHandler)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func ExampleClient_StreamPayments() {
+	client := DefaultTestNetClient
+	// all payments
+	opRequest := OperationRequest{Cursor: "760209215489"}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		// Stop streaming after 60 seconds.
+		time.Sleep(60 * time.Second)
+		cancel()
+	}()
+
+	printHandler := func(op operations.Operation) {
+		fmt.Println(op)
+	}
+	err := client.StreamPayments(ctx, opRequest, printHandler)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func TestOperationRequestStreamOperations(t *testing.T) {
 
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -85,26 +128,17 @@ func TestOperationRequestStream(t *testing.T) {
 		"https://localhost/operations?cursor=now",
 	).ReturnString(200, operationStreamResponse)
 
-	go func() {
-		// Stop streaming after 1 second.
-		time.Sleep(1 * time.Second)
+	operationStream := make([]operations.Operation, 1)
+	err := client.StreamOperations(ctx, operationRequest, func(op operations.Operation) {
+		operationStream[0] = op
 		cancel()
-	}()
-
-	var operationStream []operations.Operation
-	err := client.Stream(ctx, operationRequest.SetOperationsEndpoint(), func(operation interface{}) {
-
-		resp, ok := operation.(operations.Operation)
-		if ok {
-			operationStream = append(operationStream, resp)
-		}
 	})
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, operationStream[0].GetType(), "create_account")
 	}
 
-	// Account operations
+	// Account payments
 	operationRequest = OperationRequest{ForAccount: "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"}
 	ctx, cancel = context.WithCancel(context.Background())
 
@@ -113,17 +147,9 @@ func TestOperationRequestStream(t *testing.T) {
 		"https://localhost/accounts/GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR/payments?cursor=now",
 	).ReturnString(200, operationStreamResponse)
 
-	go func() {
-		// Stop streaming after 1 second.
-		time.Sleep(1 * time.Second)
+	err = client.StreamPayments(ctx, operationRequest, func(op operations.Operation) {
+		operationStream[0] = op
 		cancel()
-	}()
-
-	err = client.Stream(ctx, operationRequest.SetPaymentsEndpoint(), func(operation interface{}) {
-		resp, ok := operation.(operations.Operation)
-		if ok {
-			operationStream = append(operationStream, resp)
-		}
 	})
 
 	if assert.NoError(t, err) {
@@ -141,37 +167,13 @@ func TestOperationRequestStream(t *testing.T) {
 		"https://localhost/operations?cursor=now",
 	).ReturnString(500, operationStreamResponse)
 
-	err = client.Stream(ctx, operationRequest.SetOperationsEndpoint(), func(operation interface{}) {
-		resp, ok := operation.(operations.Operation)
-		if ok {
-			operationStream = append(operationStream, resp)
-		}
+	err = client.StreamOperations(ctx, operationRequest, func(op operations.Operation) {
+		operationStream[0] = op
 		cancel()
 	})
 
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Got bad HTTP status code 500")
-	}
-
-	// test endpoint error
-	operationRequest = OperationRequest{}
-	ctx, cancel = context.WithCancel(context.Background())
-
-	hmock.On(
-		"GET",
-		"https://localhost/operations?cursor=now",
-	).ReturnString(200, operationStreamResponse)
-
-	err = client.Stream(ctx, operationRequest, func(operation interface{}) {
-		resp, ok := operation.(operations.Operation)
-		if ok {
-			operationStream = append(operationStream, resp)
-		}
-		cancel()
-	})
-
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Unable to build endpoint: Internal error, endpoint not set")
 	}
 
 }

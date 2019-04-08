@@ -59,26 +59,30 @@ func (op *OperationRequest) setEndpoint(endpoint string) *OperationRequest {
 		// default to operations
 		op.endpoint = "operations"
 	}
-
 	return op
 }
 
-// SetPaymentsEndpoint is a helper function that sets the endpoint for OperationRequests to `payments`
+// SetPaymentsEndpoint is a helper function that sets the `endpoint` for OperationRequests to `payments`
 func (op *OperationRequest) SetPaymentsEndpoint() *OperationRequest {
 	return op.setEndpoint("payments")
 }
 
-// SetOperationsEndpoint is a helper function that sets the endpoint for OperationRequests to `operations`
+// SetOperationsEndpoint is a helper function that sets the `endpoint` for OperationRequests to `operations`
 func (op *OperationRequest) SetOperationsEndpoint() *OperationRequest {
 	return op.setEndpoint("operations")
 }
 
-// Stream streams horizon operations. It can be used to stream all operations or account specific operations.
-// Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
-func (op OperationRequest) Stream(
+// OperationHandler is a function that is called when a new operation is received
+type OperationHandler func(operations.Operation)
+
+// StreamOperations streams stellar operations. It can be used to stream all operations or operations
+// for and account. Use context.WithCancel to stop streaming or context.Background() if you want to
+// stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
+//  operation received.
+func (op OperationRequest) StreamOperations(
 	ctx context.Context,
 	client *Client,
-	handler func(interface{}),
+	handler OperationHandler,
 ) (err error) {
 	endpoint, err := op.BuildUrl()
 	if err != nil {

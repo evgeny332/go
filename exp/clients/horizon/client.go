@@ -433,5 +433,21 @@ func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handl
 	return request.StreamEffects(ctx, c, handler)
 }
 
+// StreamOperations streams stellar operations. It can be used to stream all operations or operations
+// for and account. Use context.WithCancel to stop streaming or context.Background() if you want to
+// stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
+//  operation received.
+func (c *Client) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return request.SetOperationsEndpoint().StreamOperations(ctx, c, handler)
+}
+
+// StreamPayments streams stellar operations. It can be used to stream all payments or payments
+// for and account. Use context.WithCancel to stop streaming or context.Background() if you want to
+// stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
+//  operation received.
+func (c *Client) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
+	return request.SetPaymentsEndpoint().StreamOperations(ctx, c, handler)
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
