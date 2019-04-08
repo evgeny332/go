@@ -86,7 +86,7 @@ func (op OperationRequest) StreamOperations(
 ) (err error) {
 	endpoint, err := op.BuildUrl()
 	if err != nil {
-		return errors.Wrap(err, "Unable to build endpoint")
+		return errors.Wrap(err, "Unable to build endpoint for operation request")
 	}
 
 	url := fmt.Sprintf("%s%s", client.getHorizonURL(), endpoint)
@@ -94,7 +94,7 @@ func (op OperationRequest) StreamOperations(
 		var baseRecord operations.Base
 
 		if err = json.Unmarshal(data, &baseRecord); err != nil {
-			return errors.Wrap(err, "Error unmarshaling data")
+			return errors.Wrap(err, "Error unmarshaling data for operation request")
 		}
 
 		ops, err := operations.UnmarshalOperation(baseRecord.GetType(), data)
