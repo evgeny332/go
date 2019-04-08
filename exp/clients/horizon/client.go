@@ -39,8 +39,7 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "Error creating HTTP request")
 	}
-	req.Header.Set("X-Client-Name", "go-stellar-sdk")
-	req.Header.Set("X-Client-Version", app.Version())
+	c.setClientAppHeaders(req)
 
 	if c.horizonTimeOut == 0 {
 		c.horizonTimeOut = HorizonTimeOut
@@ -83,8 +82,7 @@ func (c *Client) stream(
 		}
 		req.Header.Set("Accept", "text/event-stream")
 		// to do: confirm name and version
-		req.Header.Set("X-Client-Name", "go-stellar-sdk")
-		req.Header.Set("X-Client-Version", app.Version())
+		c.setClientAppHeaders(req)
 
 		// We can use c.HTTP here because we set Timeout per request not on the client. See sendRequest()
 		resp, err := c.HTTP.Do(req)
@@ -185,6 +183,13 @@ func (c *Client) stream(
 			}
 		}
 	}
+}
+
+func (c *Client) setClientAppHeaders(req *http.Request) {
+	req.Header.Set("X-Client-Name", "go-stellar-sdk")
+	req.Header.Set("X-Client-Version", app.Version())
+	req.Header.Set("X-App-Name", c.AppName)
+	req.Header.Set("X-App-Version", c.AppVersion)
 }
 
 // getHorizonUrl strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
@@ -400,10 +405,32 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 	return
 }
 
+// StreamTrades streams executed trades. It can be used to stream all trades, trades for an account and
+// trades for an offer. Use context.WithCancel to stop streaming or context.Background() if you want
+// to stream indefinitely. TradeHandler is a user-supplied function that is executed for each streamed trade received.
+func (c *Client) StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) (err error) {
+	err = request.StreamTrades(ctx, c, handler)
+	return
+}
+
 // TradeAggregations returns stellar trade aggregations (https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html)
 func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequest(request, &tds)
 	return
+}
+
+// StreamTransactions streams processed transactions. It can be used to stream all transactions and
+// transactions for an account. Use context.WithCancel to stop streaming or context.Background()
+// if you want to stream indefinitely. TransactionHandler is a user-supplied function that is executed for each streamed transaction received.
+func (c *Client) StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error {
+	return request.StreamTransactions(ctx, c, handler)
+}
+
+// StreamEffects streams horizon effects. It can be used to stream all effects or account specific effects.
+// Use context.WithCancel to stop streaming or context.Background() if you want to stream indefinitely.
+// EffectHandler is a user-supplied function that is executed for each streamed transaction received.
+func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error {
+	return request.StreamEffects(ctx, c, handler)
 }
 
 // ensure that the horizon client implements ClientInterface
