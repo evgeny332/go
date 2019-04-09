@@ -434,15 +434,16 @@ func (c *Client) StreamEffects(ctx context.Context, request EffectRequest, handl
 }
 
 // StreamOperations streams stellar operations. It can be used to stream all operations or operations
-// for and account. Use context.WithCancel to stop streaming or context.Background() if you want to
+// for an account. Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
 //  operation received.
 func (c *Client) StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error {
 	return request.SetOperationsEndpoint().StreamOperations(ctx, c, handler)
 }
 
-// StreamPayments streams stellar operations. It can be used to stream all payments or payments
-// for and account. Use context.WithCancel to stop streaming or context.Background() if you want to
+// StreamPayments streams stellar payments. It can be used to stream all payments or payments
+// for an account. Payments include create_account, payment, path_payment and account_merge operations.
+// Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
 //  operation received.
 func (c *Client) StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error {
