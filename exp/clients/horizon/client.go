@@ -140,7 +140,6 @@ func (c *Client) stream(
 						return errors.Wrap(err, "Error reading line")
 					}
 				}
-
 				buffer.WriteString(line)
 
 				if strings.TrimRight(line, "\n\r") == "" {
@@ -302,14 +301,6 @@ func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
 // Offers returns information about offers made on the SDEX.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html
 func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
-	if request.ForAccount == "" {
-		err = errors.New("`ForAccount` parameter required")
-	}
-
-	if err != nil {
-		return
-	}
-
 	err = c.sendRequest(request, &offers)
 	return
 }
@@ -450,11 +441,25 @@ func (c *Client) StreamPayments(ctx context.Context, request OperationRequest, h
 	return request.SetPaymentsEndpoint().StreamOperations(ctx, c, handler)
 }
 
+// StreamOffers streams offers processed by the Stellar network for an account. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// OfferHandler is a user-supplied function that is executed for each streamed offer received.
+func (c *Client) StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error {
+	return request.StreamOffers(ctx, c, handler)
+}
+
 // StreamLedgers streams stellar ledgers. It can be used to stream all ledgers. Use context.WithCancel
 // to stop streaming or context.Background() if you want to stream indefinitely.
 // LedgerHandler is a user-supplied function that is executed for each streamed ledger received.
 func (c *Client) StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error {
 	return request.StreamLedgers(ctx, c, handler)
+}
+
+// StreamOrderBooks streams the orderbook for a given asset pair. Use context.WithCancel
+// to stop streaming or context.Background() if you want to stream indefinitely.
+// OrderBookHandler is a user-supplied function that is executed for each streamed order received.
+func (c *Client) StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error {
+	return request.StreamOrderBooks(ctx, c, handler)
 }
 
 // ensure that the horizon client implements ClientInterface
