@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/stellar/go/clients/horizon"
@@ -20,6 +21,7 @@ const friendbotAddress = "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZN
 
 func main() {
 	resetF := flag.Bool("reset", false, "Remove all testing state")
+	initialiseF := flag.Bool("initialise", false, "Set up test accounts")
 	flag.Parse()
 
 	keys := initKeys()
@@ -29,21 +31,37 @@ func main() {
 		fmt.Println("Resetting TestNet state...")
 		reset(client, keys)
 		fmt.Println("Reset complete.")
+	} else if *initialiseF {
+		fmt.Println("Initialising TestNet accounts...")
+		initialise(client, keys)
+		fmt.Println("Initialisation complete.")
 	}
 }
 
-func reset(client *horizonclient.Client, keys []key) {
+func loadAccounts(client *horizonclient.Client, keys []key) []key {
 	for i, k := range keys {
-		// Check if test0 account exists
 		accountRequest := horizonclient.AccountRequest{AccountId: k.Address}
 		horizonSourceAccount, err := client.AccountDetail(accountRequest)
-		if err != nil {
-			fmt.Printf("    Couldn't get account detail for %s: %s\n", k.Address, err)
-			fmt.Printf("    Skipping further operations on account %s.\n", k.Address)
+		if err == nil {
+			keys[i].Account = horizonSourceAccount
+			seqNum, err := horizonSourceAccount.GetSequenceNumber()
+			if err == nil {
+				keys[i].SeqNum = int64(seqNum)
+			}
+			keys[i].Exists = true
+		}
+	}
+
+	return keys
+}
+
+func reset(client *horizonclient.Client, keys []key) {
+	keys = loadAccounts(client, keys)
+	for _, k := range keys {
+		if !k.Exists {
+			fmt.Printf("    Account %s not found - skipping further operations on it...\n", k.Address)
 			continue
 		}
-		k.Account.FromHorizonAccount(horizonSourceAccount)
-		keys[i].Account.FromHorizonAccount(horizonSourceAccount)
 
 		// It exists - so we will proceed to delete it
 		fmt.Println("\n    Found testnet account with ID:", k.Account.ID)
@@ -66,14 +84,14 @@ func reset(client *horizonclient.Client, keys []key) {
 			fmt.Printf("        Deleting offer %d...\n", o.ID)
 			resp := submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.Account.SequenceNumber++
+			k.SeqNum++
 		}
 
 		// Find any authorised trustlines on this account...
-		fmt.Printf("    Account %s has %d balances...\n", k.Address, len(horizonSourceAccount.Balances))
+		fmt.Printf("    Account %s has %d balances...\n", k.Address, len(k.Account.Balances))
 
 		// ...and delete them
-		for _, b := range horizonSourceAccount.Balances {
+		for _, b := range k.Account.Balances {
 			// Native balances don't have trustlines
 			if b.Type == "native" {
 				continue
@@ -92,7 +110,7 @@ func reset(client *horizonclient.Client, keys []key) {
 			dieIfError("Problem building payment op", err)
 			resp := submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.Account.SequenceNumber++
+			k.SeqNum++
 
 			// Delete the now-empty trustline...
 			fmt.Printf("        Deleting trustline for asset %s:%s...\n", b.Code, b.Issuer)
@@ -100,25 +118,25 @@ func reset(client *horizonclient.Client, keys []key) {
 			dieIfError("Problem building deleteTrustline op", err)
 			resp = submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.Account.SequenceNumber++
+			k.SeqNum++
 		}
 
 		// Find any data entries on this account...
-		fmt.Printf("    Account %s has %d data entries...\n", k.Address, len(horizonSourceAccount.Data))
-		for dataKey := range horizonSourceAccount.Data {
-			decodedV, _ := horizonSourceAccount.GetData(dataKey)
+		fmt.Printf("    Account %s has %d data entries...\n", k.Address, len(k.Account.Data))
+		for dataKey := range k.Account.Data {
+			decodedV, _ := k.Account.GetData(dataKey)
 			fmt.Printf("    Deleting data entry '%s' -> '%s'...\n", dataKey, decodedV)
 			txe, err := deleteData(k.Account, dataKey, k)
 			dieIfError("Problem building manageData op", err)
 			resp := submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.Account.SequenceNumber++
+			k.SeqNum++
 		}
 	}
 
 	// Merge the accounts...
 	for _, k := range keys {
-		if k.Account == (txnbuild.Account{}) {
+		if !k.Exists {
 			continue
 		}
 		fmt.Printf("    Merging account %s back to friendbot (%s)...\n", k.Address, friendbotAddress)
@@ -129,13 +147,27 @@ func reset(client *horizonclient.Client, keys []key) {
 	}
 }
 
-func deleteData(source txnbuild.Account, k string, signer key) (string, error) {
+func initialise(client *horizonclient.Client, keys []key) {
+	_, err := fund(keys[0].Address)
+	dieIfError(fmt.Sprintf("Couldn't fund account %s from friendbot", keys[0].Address), err)
+
+}
+
+func fund(address string) (resp *http.Response, err error) {
+	resp, err = http.Get("https://friendbot.stellar.org/?addr=" + address)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func deleteData(source horizon.Account, k string, signer key) (string, error) {
 	manageData := txnbuild.ManageData{
 		Name: k,
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: source,
+		SourceAccount: txnbuild.FromHorizonAccount(source),
 		Operations:    []txnbuild.Operation{&manageData},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -148,7 +180,7 @@ func deleteData(source txnbuild.Account, k string, signer key) (string, error) {
 	return txeBase64, nil
 }
 
-func payment(source txnbuild.Account, dest, amount string, asset txnbuild.Asset, signer key) (string, error) {
+func payment(source horizon.Account, dest, amount string, asset txnbuild.Asset, signer key) (string, error) {
 	payment := txnbuild.Payment{
 		Destination: dest,
 		Amount:      amount,
@@ -156,7 +188,7 @@ func payment(source txnbuild.Account, dest, amount string, asset txnbuild.Asset,
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: source,
+		SourceAccount: txnbuild.FromHorizonAccount(source),
 		Operations:    []txnbuild.Operation{&payment},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -169,11 +201,11 @@ func payment(source txnbuild.Account, dest, amount string, asset txnbuild.Asset,
 	return txeBase64, nil
 }
 
-func deleteTrustline(source txnbuild.Account, asset txnbuild.Asset, signer key) (string, error) {
+func deleteTrustline(source horizon.Account, asset txnbuild.Asset, signer key) (string, error) {
 	deleteTrustline := txnbuild.NewRemoveTrustlineOp(&asset)
 
 	tx := txnbuild.Transaction{
-		SourceAccount: source,
+		SourceAccount: txnbuild.FromHorizonAccount(source),
 		Operations:    []txnbuild.Operation{&deleteTrustline},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -186,11 +218,11 @@ func deleteTrustline(source txnbuild.Account, asset txnbuild.Asset, signer key) 
 	return txeBase64, nil
 }
 
-func deleteOffer(source txnbuild.Account, offerID uint64, signer key) (string, error) {
+func deleteOffer(source horizon.Account, offerID uint64, signer key) (string, error) {
 	deleteOffer := txnbuild.NewDeleteOfferOp(offerID)
 
 	tx := txnbuild.Transaction{
-		SourceAccount: source,
+		SourceAccount: txnbuild.FromHorizonAccount(source),
 		Operations:    []txnbuild.Operation{&deleteOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -203,13 +235,13 @@ func deleteOffer(source txnbuild.Account, offerID uint64, signer key) (string, e
 	return txeBase64, nil
 }
 
-func mergeAccount(source txnbuild.Account, destAddress string, signer key) (string, error) {
+func mergeAccount(source horizon.Account, destAddress string, signer key) (string, error) {
 	accountMerge := txnbuild.AccountMerge{
 		Destination: destAddress,
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: source,
+		SourceAccount: txnbuild.FromHorizonAccount(source),
 		Operations:    []txnbuild.Operation{&accountMerge},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -225,8 +257,10 @@ func mergeAccount(source txnbuild.Account, destAddress string, signer key) (stri
 type key struct {
 	Seed    string
 	Address string
-	Account txnbuild.Account
+	Account horizon.Account
 	Keypair *keypair.Full
+	Exists  bool
+	SeqNum  int64
 }
 
 func initKeys() []key {

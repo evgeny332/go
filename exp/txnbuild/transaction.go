@@ -24,15 +24,12 @@ type Account struct {
 
 // FromHorizonAccount is a convenience method that maps an account returned by
 // horizonclient to a txnbuild.Account.
-func (a *Account) FromHorizonAccount(horizonAccount horizon.Account) error {
-	seqnum, err := horizonAccount.GetSequenceNumber()
-	if err != nil {
-		return errors.Wrap(err, "Failed to get sequence number")
+func FromHorizonAccount(horizonAccount horizon.Account) Account {
+	seqnum, _ := horizonAccount.GetSequenceNumber()
+	return Account{
+		ID:             horizonAccount.ID,
+		SequenceNumber: seqnum,
 	}
-	a.ID = horizonAccount.ID
-	a.SequenceNumber = seqnum
-
-	return nil
 }
 
 // Transaction represents a Stellar Transaction.
