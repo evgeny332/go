@@ -79,11 +79,7 @@ type OperationHandler func(operations.Operation)
 // for and account. Use context.WithCancel to stop streaming or context.Background() if you want to
 // stream indefinitely. OperationHandler is a user-supplied function that is executed for each streamed
 //  operation received.
-func (op OperationRequest) StreamOperations(
-	ctx context.Context,
-	client *Client,
-	handler OperationHandler,
-) (err error) {
+func (op OperationRequest) StreamOperations(ctx context.Context, client *Client, handler OperationHandler) error {
 	endpoint, err := op.BuildUrl()
 	if err != nil {
 		return errors.Wrap(err, "Unable to build endpoint for operation request")

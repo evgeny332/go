@@ -112,7 +112,6 @@ func ExampleClient_StreamPayments() {
 }
 
 func TestOperationRequestStreamOperations(t *testing.T) {
-
 	hmock := httptest.NewClient()
 	client := &Client{
 		HorizonURL: "https://localhost/",
@@ -175,7 +174,6 @@ func TestOperationRequestStreamOperations(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "Got bad HTTP status code 500")
 	}
-
 }
 
 var operationStreamResponse = `data: {"_links":{"self":{"href":"https://horizon-testnet.stellar.org/operations/4934917427201"},"transaction":{"href":"https://horizon-testnet.stellar.org/transactions/1c1449106a54cccd8a2ec2094815ad9db30ae54c69c3309dd08d13fdb8c749de"},"effects":{"href":"https://horizon-testnet.stellar.org/operations/4934917427201/effects"},"succeeds":{"href":"https://horizon-testnet.stellar.org/effects?order=desc\u0026cursor=4934917427201"},"precedes":{"href":"https://horizon-testnet.stellar.org/effects?order=asc\u0026cursor=4934917427201"}},"id":"4934917427201","paging_token":"4934917427201","transaction_successful":true,"source_account":"GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR","type":"create_account","type_i":0,"created_at":"2019-02-27T11:32:39Z","transaction_hash":"1c1449106a54cccd8a2ec2094815ad9db30ae54c69c3309dd08d13fdb8c749de","starting_balance":"10000.0000000","funder":"GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR","account":"GDBLBBDIUULY3HGIKXNK6WVBISY7DCNCDA45EL7NTXWX5R4UZ26HGMGS"}
