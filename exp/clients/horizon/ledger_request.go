@@ -64,3 +64,15 @@ func (lr LedgerRequest) StreamLedgers(ctx context.Context, client *Client,
 		return nil
 	})
 }
+
+// Next returns the next page of ledgers
+func (lr LedgerRequest) Next(lp hProtocol.LedgersPage, client *Client) (nextPage hProtocol.LedgersPage, err error) {
+	err = client.sendURLRequest(lp.Links.Next.Href, &nextPage)
+	return
+}
+
+// Prev returns the previous page of ledgers
+func (lr LedgerRequest) Prev(lp hProtocol.LedgersPage, client *Client) (prevPage hProtocol.LedgersPage, err error) {
+	err = client.sendURLRequest(lp.Links.Prev.Href, &prevPage)
+	return
+}

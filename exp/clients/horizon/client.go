@@ -57,6 +57,35 @@ func (c *Client) sendRequest(hr HorizonRequest, a interface{}) (err error) {
 	return
 }
 
+// sendURLRequests sends a request to horizon when a url is provided.
+func (c *Client) sendURLRequest(rURL string, a interface{}) (err error) {
+	_, err = url.Parse(rURL)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse request url")
+	}
+
+	req, err := http.NewRequest("GET", rURL, nil)
+	if err != nil {
+		return errors.Wrap(err, "Error creating HTTP request")
+	}
+
+	c.setClientAppHeaders(req)
+	if c.horizonTimeOut == 0 {
+		c.horizonTimeOut = HorizonTimeOut
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*c.horizonTimeOut)
+
+	resp, err := c.HTTP.Do(req.WithContext(ctx))
+	if err != nil {
+		cancel()
+		return
+	}
+
+	err = decodeResponse(resp, &a)
+	cancel()
+	return
+}
+
 // stream handles connections to endpoints that support streaming on an horizon server
 func (c *Client) stream(
 	ctx context.Context,
