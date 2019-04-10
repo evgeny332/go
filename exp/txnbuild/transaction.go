@@ -27,7 +27,7 @@ type Account struct {
 func FromHorizonAccount(horizonAccount horizon.Account) Account {
 	seqnum, _ := horizonAccount.GetSequenceNumber()
 	return Account{
-		ID:             horizonAccount.ID,
+		ID:             horizonAccount.AccountID,
 		SequenceNumber: seqnum,
 	}
 }

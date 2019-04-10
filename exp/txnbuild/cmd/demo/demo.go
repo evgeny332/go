@@ -162,7 +162,8 @@ func initialise(client *horizonclient.Client, keys []key) {
 		dieIfError("Problem building createAccount op", err)
 		resp := submit(client, txe)
 		fmt.Println(resp.TransactionSuccessToString())
-		// TODO: Fix incrementing
+
+		// TODO: Update with new increment feature
 		// keys[0].IncrementSequenceNumber()
 	}
 }
@@ -296,10 +297,6 @@ type key struct {
 	Exists  bool
 	SeqNum  int64
 }
-
-// func (key) IncrementSequenceNumber() {
-// 	fmt.Println(key.Seed)
-// }
 
 func initKeys() []key {
 	// Accounts created on testnet
