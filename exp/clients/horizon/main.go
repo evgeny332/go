@@ -1,4 +1,4 @@
-// package horizonclient is an experimental horizon client that provides access to the horizon server
+// Package horizonclient is an experimental horizon client that provides access to the horizon server
 package horizonclient
 
 import (
@@ -129,6 +129,14 @@ type ClientInterface interface {
 	Payments(request OperationRequest) (operations.OperationsPage, error)
 	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
 	Trades(request TradeRequest) (hProtocol.TradesPage, error)
+	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
+	StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error
+	StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error
+	StreamOperations(ctx context.Context, request OperationRequest, handler OperationHandler) error
+	StreamPayments(ctx context.Context, request OperationRequest, handler OperationHandler) error
+	StreamOffers(ctx context.Context, request OfferRequest, handler OfferHandler) error
+	StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error
+	StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network
@@ -147,7 +155,7 @@ var DefaultPublicNetClient = &Client{
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints
 type HorizonRequest interface {
-	BuildUrl() (string, error)
+	BuildURL() (string, error)
 }
 
 // StreamRequest contains methods implemented by request structs for endpoints that support streaming
@@ -157,7 +165,7 @@ type StreamRequest interface {
 
 // AccountRequest struct contains data for making requests to the accounts endpoint of an horizon server
 type AccountRequest struct {
-	AccountId string
+	AccountID string
 	DataKey   string
 }
 
@@ -212,7 +220,7 @@ type OperationRequest struct {
 	ForAccount     string
 	ForLedger      uint
 	ForTransaction string
-	forOperationId string
+	forOperationID string
 	Order          Order
 	Cursor         string
 	Limit          uint

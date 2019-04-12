@@ -3,22 +3,30 @@ package txnbuild
 import (
 	"testing"
 
+	"github.com/stellar/go/clients/horizon"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func makeTestAccount(kp *keypair.Full, seqnum string) horizon.Account {
+	return horizon.Account{
+		HistoryAccount: horizon.HistoryAccount{
+			AccountID: kp.Address(),
+		},
+		Sequence: seqnum,
+	}
+}
+
 func TestInflation(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639897,
-	}
+	sourceAccount := makeTestAccount(kp0, "9605939170639897")
 
 	inflation := Inflation{}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -30,11 +38,7 @@ func TestInflation(t *testing.T) {
 
 func TestCreateAccount(t *testing.T) {
 	kp0 := newKeypair0()
-
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639897,
-	}
+	sourceAccount := makeTestAccount(kp0, "9605939170639897")
 
 	createAccount := CreateAccount{
 		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
@@ -42,7 +46,7 @@ func TestCreateAccount(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createAccount},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -54,10 +58,7 @@ func TestCreateAccount(t *testing.T) {
 
 func TestPayment(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639898,
-	}
+	sourceAccount := makeTestAccount(kp0, "9605939170639898")
 
 	payment := Payment{
 		Destination: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
@@ -66,7 +67,7 @@ func TestPayment(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -78,10 +79,7 @@ func TestPayment(t *testing.T) {
 
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 9605939170639898,
-	}
+	sourceAccount := makeTestAccount(kp0, "9605939170639898")
 
 	payment := Payment{
 		Destination: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
@@ -89,7 +87,7 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&payment},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -101,17 +99,14 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 
 func TestBumpSequence(t *testing.T) {
 	kp1 := newKeypair1()
-	sourceAccount := Account{
-		ID:             kp1.Address(),
-		SequenceNumber: 9606132444168199,
-	}
+	sourceAccount := makeTestAccount(kp1, "9606132444168199")
 
 	bumpSequence := BumpSequence{
 		BumpTo: 9606132444168300,
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&bumpSequence},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -123,18 +118,14 @@ func TestBumpSequence(t *testing.T) {
 
 func TestAccountMerge(t *testing.T) {
 	kp0 := newKeypair0()
-
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484298,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484298")
 
 	accountMerge := AccountMerge{
 		Destination: "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP",
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&accountMerge},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -146,10 +137,7 @@ func TestAccountMerge(t *testing.T) {
 
 func TestManageData(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484298,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484298")
 
 	manageData := ManageData{
 		Name:  "Fruit preference",
@@ -157,7 +145,7 @@ func TestManageData(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -168,17 +156,14 @@ func TestManageData(t *testing.T) {
 }
 func TestManageDataRemoveDataEntry(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484309,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484309")
 
 	manageData := ManageData{
 		Name: "Fruit preference",
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&manageData},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -191,17 +176,14 @@ func TestManageDataRemoveDataEntry(t *testing.T) {
 func TestSetOptionsInflationDestination(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484315,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484315")
 
 	setOptions := SetOptions{
 		InflationDestination: NewInflationDestination(kp1.Address()),
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -213,17 +195,14 @@ func TestSetOptionsInflationDestination(t *testing.T) {
 
 func TestSetOptionsSetFlags(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484318,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484318")
 
 	setOptions := SetOptions{
 		SetFlags: []AccountFlag{AuthRequired, AuthRevocable},
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -235,17 +214,14 @@ func TestSetOptionsSetFlags(t *testing.T) {
 
 func TestSetOptionsClearFlags(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484319,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484319")
 
 	setOptions := SetOptions{
 		ClearFlags: []AccountFlag{AuthRequired, AuthRevocable},
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -257,17 +233,14 @@ func TestSetOptionsClearFlags(t *testing.T) {
 
 func TestSetOptionsMasterWeight(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484320,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484320")
 
 	setOptions := SetOptions{
 		MasterWeight: NewThreshold(10),
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -279,10 +252,7 @@ func TestSetOptionsMasterWeight(t *testing.T) {
 
 func TestSetOptionsThresholds(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484322,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484322")
 
 	setOptions := SetOptions{
 		LowThreshold:    NewThreshold(1),
@@ -291,7 +261,7 @@ func TestSetOptionsThresholds(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -303,17 +273,14 @@ func TestSetOptionsThresholds(t *testing.T) {
 
 func TestSetOptionsHomeDomain(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484325,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484325")
 
 	setOptions := SetOptions{
 		HomeDomain: NewHomeDomain("LovelyLumensLookLuminous.com"),
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -325,17 +292,14 @@ func TestSetOptionsHomeDomain(t *testing.T) {
 
 func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484323,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484323")
 
 	setOptions := SetOptions{
 		HomeDomain: NewHomeDomain("LovelyLumensLookLuminousLately.com"),
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -347,17 +311,14 @@ func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 func TestSetOptionsSigner(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484325,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484325")
 
 	setOptions := SetOptions{
 		Signer: &Signer{Address: kp1.Address(), Weight: Threshold(4)},
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&setOptions},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -369,10 +330,7 @@ func TestSetOptionsSigner(t *testing.T) {
 
 func TestMultipleOperations(t *testing.T) {
 	kp1 := newKeypair1()
-	sourceAccount := Account{
-		ID:             kp1.Address(),
-		SequenceNumber: 9606132444168199,
-	}
+	sourceAccount := makeTestAccount(kp1, "9606132444168199")
 
 	inflation := Inflation{}
 	bumpSequence := BumpSequence{
@@ -380,7 +338,7 @@ func TestMultipleOperations(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&inflation, &bumpSequence},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -393,11 +351,7 @@ func TestMultipleOperations(t *testing.T) {
 func TestChangeTrust(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484348,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484348")
 
 	changeTrust := ChangeTrust{
 		Line:  NewAsset("ABCD", kp1.Address()),
@@ -405,7 +359,7 @@ func TestChangeTrust(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -417,11 +371,7 @@ func TestChangeTrust(t *testing.T) {
 
 func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	kp0 := newKeypair0()
-
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484348,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484348")
 
 	changeTrust := ChangeTrust{
 		Line:  NewNativeAsset(),
@@ -429,7 +379,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&changeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -442,17 +392,13 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 func TestChangeTrustDeleteTrustline(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484354,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484354")
 
 	issuedAsset := NewAsset("ABCD", kp1.Address())
 	removeTrust := NewRemoveTrustlineOp(issuedAsset)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&removeTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -465,11 +411,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 func TestAllowTrust(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-
-	sourceAccount := Account{
-		ID:             kp0.Address(),
-		SequenceNumber: 40385577484366,
-	}
+	sourceAccount := makeTestAccount(kp0, "40385577484366")
 
 	issuedAsset := NewAsset("ABCD", kp1.Address())
 	allowTrust := AllowTrust{
@@ -479,7 +421,7 @@ func TestAllowTrust(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&allowTrust},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -492,11 +434,7 @@ func TestAllowTrust(t *testing.T) {
 func TestManageOfferNewOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-
-	sourceAccount := Account{
-		ID:             kp1.Address(),
-		SequenceNumber: 41137196761092,
-	}
+	sourceAccount := makeTestAccount(kp1, "41137196761092")
 
 	selling := NewNativeAsset()
 	buying := NewAsset("ABCD", kp0.Address())
@@ -505,7 +443,7 @@ func TestManageOfferNewOffer(t *testing.T) {
 	createOffer := NewCreateOfferOp(selling, buying, sellAmount, price)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -517,17 +455,13 @@ func TestManageOfferNewOffer(t *testing.T) {
 
 func TestManageOfferDeleteOffer(t *testing.T) {
 	kp1 := newKeypair1()
-
-	sourceAccount := Account{
-		ID:             kp1.Address(),
-		SequenceNumber: 41137196761105,
-	}
+	sourceAccount := makeTestAccount(kp1, "41137196761105")
 
 	offerID := uint64(2921622)
 	deleteOffer := NewDeleteOfferOp(offerID)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&deleteOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -540,11 +474,7 @@ func TestManageOfferDeleteOffer(t *testing.T) {
 func TestManageOfferUpdateOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-
-	sourceAccount := Account{
-		ID:             kp1.Address(),
-		SequenceNumber: 41137196761097,
-	}
+	sourceAccount := makeTestAccount(kp1, "41137196761097")
 
 	selling := NewNativeAsset()
 	buying := NewAsset("ABCD", kp0.Address())
@@ -554,7 +484,7 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 	updateOffer := NewUpdateOfferOp(selling, buying, sellAmount, price, offerID)
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&updateOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -567,11 +497,7 @@ func TestManageOfferUpdateOffer(t *testing.T) {
 func TestCreatePassiveOffer(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
-
-	sourceAccount := Account{
-		ID:             kp1.Address(),
-		SequenceNumber: 41137196761100,
-	}
+	sourceAccount := makeTestAccount(kp1, "41137196761100")
 
 	createPassiveOffer := CreatePassiveOffer{
 		Selling: NewNativeAsset(),
@@ -580,7 +506,7 @@ func TestCreatePassiveOffer(t *testing.T) {
 		Price:   "1.0"}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&createPassiveOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -593,13 +519,9 @@ func TestCreatePassiveOffer(t *testing.T) {
 func TestPathPayment(t *testing.T) {
 	kp0 := newKeypair0()
 	kp2 := newKeypair2()
+	sourceAccount := makeTestAccount(kp2, "187316408680450")
 
-	sourceAccount := Account{
-		ID:             kp2.Address(),
-		SequenceNumber: 187316408680450,
-	}
 	abcdAsset := NewAsset("ABCD", kp0.Address())
-
 	pathPayment := PathPayment{
 		SendAsset:   NewNativeAsset(),
 		SendMax:     "10",
@@ -610,7 +532,7 @@ func TestPathPayment(t *testing.T) {
 	}
 
 	tx := Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&pathPayment},
 		Network:       network.TestNetworkPassphrase,
 	}

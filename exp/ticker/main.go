@@ -1,44 +1,34 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
+	"errors"
 	"os"
-	"path/filepath"
 
+	_ "github.com/lib/pq"
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
-	"github.com/stellar/go/exp/ticker/internal/scraper"
+	ticker "github.com/stellar/go/exp/ticker/internal"
+	"github.com/stellar/go/exp/ticker/internal/tickerdb"
+	"github.com/stellar/go/exp/ticker/internal/utils"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-func writeResultsToFile(jsonBytes []byte, filename string) (numBytes int, err error) {
-	path := filepath.Join(".", "tmp")
-	_ = os.Mkdir(path, os.ModePerm) // ignore if dir already exists
-
-	f, err := os.Create(filepath.Join(".", "tmp", filename))
-	check(err)
-	defer f.Close()
-
-	numBytes, err = f.Write(jsonBytes)
-	fmt.Printf("Wrote %d bytes to %s\n", numBytes, filename)
-	f.Sync()
-
-	return
-}
-
 func main() {
-	// Temporary main function to run / test packages
-	c := horizonclient.DefaultPublicNetClient
-	assetStatList, err := scraper.FetchAllAssets(c)
-	check(err)
+	dbInfo := os.Getenv("DB_INFO")
+	if dbInfo == "" {
+		panic(errors.New("could not start: env var DB_INFO not provided"))
+	}
+	session, err := tickerdb.CreateSession("postgres", dbInfo)
+	defer session.DB.Close()
+	utils.PanicIfError(err)
 
-	jsonAssets, err := json.MarshalIndent(assetStatList, "", "\t")
-	check(err)
+	client := horizonclient.DefaultPublicNetClient
 
-	writeResultsToFile(jsonAssets, "assets.json")
+	err = ticker.RefreshAssets(&session, client)
+	utils.PanicIfError(err)
+
+	err = ticker.BackfillTrades(&session, client, 2, 0)
+	utils.PanicIfError(err)
+
+	ctx := context.Background()
+	err = ticker.StreamTrades(ctx, &session, client)
 }
