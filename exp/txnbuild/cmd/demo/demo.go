@@ -40,14 +40,10 @@ func main() {
 
 func loadAccounts(client *horizonclient.Client, keys []key) []key {
 	for i, k := range keys {
-		accountRequest := horizonclient.AccountRequest{AccountId: k.Address}
+		accountRequest := horizonclient.AccountRequest{AccountID: k.Address}
 		horizonSourceAccount, err := client.AccountDetail(accountRequest)
 		if err == nil {
-			keys[i].Account = horizonSourceAccount
-			seqNum, err := horizonSourceAccount.GetSequenceNumber()
-			if err == nil {
-				keys[i].SeqNum = int64(seqNum)
-			}
+			keys[i].Account = &horizonSourceAccount
 			keys[i].Exists = true
 		}
 	}
@@ -84,7 +80,6 @@ func reset(client *horizonclient.Client, keys []key) {
 			fmt.Printf("        Deleting offer %d...\n", o.ID)
 			resp := submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.SeqNum++
 		}
 
 		// Find any authorised trustlines on this account...
@@ -110,7 +105,6 @@ func reset(client *horizonclient.Client, keys []key) {
 			dieIfError("Problem building payment op", err)
 			resp := submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.SeqNum++
 
 			// Delete the now-empty trustline...
 			fmt.Printf("        Deleting trustline for asset %s:%s...\n", b.Code, b.Issuer)
@@ -118,7 +112,6 @@ func reset(client *horizonclient.Client, keys []key) {
 			dieIfError("Problem building deleteTrustline op", err)
 			resp = submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.SeqNum++
 		}
 
 		// Find any data entries on this account...
@@ -130,7 +123,6 @@ func reset(client *horizonclient.Client, keys []key) {
 			dieIfError("Problem building manageData op", err)
 			resp := submit(client, txe)
 			fmt.Println(resp.TransactionSuccessToString())
-			k.SeqNum++
 		}
 	}
 
@@ -162,9 +154,6 @@ func initialise(client *horizonclient.Client, keys []key) {
 		dieIfError("Problem building createAccount op", err)
 		resp := submit(client, txe)
 		fmt.Println(resp.TransactionSuccessToString())
-
-		// TODO: Update with new increment feature
-		// keys[0].IncrementSequenceNumber()
 	}
 }
 
@@ -176,14 +165,14 @@ func fund(address string) (resp *http.Response, err error) {
 	return
 }
 
-func createAccount(source horizon.Account, dest string, signer key) (string, error) {
+func createAccount(source *horizon.Account, dest string, signer key) (string, error) {
 	createAccountOp := txnbuild.CreateAccount{
 		Destination: dest,
 		Amount:      "100",
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: txnbuild.FromHorizonAccount(source),
+		SourceAccount: source,
 		Operations:    []txnbuild.Operation{&createAccountOp},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -196,13 +185,13 @@ func createAccount(source horizon.Account, dest string, signer key) (string, err
 	return txeBase64, nil
 }
 
-func deleteData(source horizon.Account, k string, signer key) (string, error) {
+func deleteData(source *horizon.Account, k string, signer key) (string, error) {
 	manageDataOp := txnbuild.ManageData{
 		Name: k,
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: txnbuild.FromHorizonAccount(source),
+		SourceAccount: source,
 		Operations:    []txnbuild.Operation{&manageDataOp},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -215,7 +204,7 @@ func deleteData(source horizon.Account, k string, signer key) (string, error) {
 	return txeBase64, nil
 }
 
-func payment(source horizon.Account, dest, amount string, asset txnbuild.Asset, signer key) (string, error) {
+func payment(source *horizon.Account, dest, amount string, asset txnbuild.Asset, signer key) (string, error) {
 	paymentOp := txnbuild.Payment{
 		Destination: dest,
 		Amount:      amount,
@@ -223,7 +212,7 @@ func payment(source horizon.Account, dest, amount string, asset txnbuild.Asset, 
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: txnbuild.FromHorizonAccount(source),
+		SourceAccount: source,
 		Operations:    []txnbuild.Operation{&paymentOp},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -236,11 +225,11 @@ func payment(source horizon.Account, dest, amount string, asset txnbuild.Asset, 
 	return txeBase64, nil
 }
 
-func deleteTrustline(source horizon.Account, asset txnbuild.Asset, signer key) (string, error) {
+func deleteTrustline(source *horizon.Account, asset txnbuild.Asset, signer key) (string, error) {
 	deleteTrustline := txnbuild.NewRemoveTrustlineOp(&asset)
 
 	tx := txnbuild.Transaction{
-		SourceAccount: txnbuild.FromHorizonAccount(source),
+		SourceAccount: source,
 		Operations:    []txnbuild.Operation{&deleteTrustline},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -253,11 +242,11 @@ func deleteTrustline(source horizon.Account, asset txnbuild.Asset, signer key) (
 	return txeBase64, nil
 }
 
-func deleteOffer(source horizon.Account, offerID uint64, signer key) (string, error) {
+func deleteOffer(source *horizon.Account, offerID uint64, signer key) (string, error) {
 	deleteOffer := txnbuild.NewDeleteOfferOp(offerID)
 
 	tx := txnbuild.Transaction{
-		SourceAccount: txnbuild.FromHorizonAccount(source),
+		SourceAccount: source,
 		Operations:    []txnbuild.Operation{&deleteOffer},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -270,13 +259,13 @@ func deleteOffer(source horizon.Account, offerID uint64, signer key) (string, er
 	return txeBase64, nil
 }
 
-func mergeAccount(source horizon.Account, destAddress string, signer key) (string, error) {
+func mergeAccount(source *horizon.Account, destAddress string, signer key) (string, error) {
 	accountMerge := txnbuild.AccountMerge{
 		Destination: destAddress,
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: txnbuild.FromHorizonAccount(source),
+		SourceAccount: source,
 		Operations:    []txnbuild.Operation{&accountMerge},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -292,10 +281,9 @@ func mergeAccount(source horizon.Account, destAddress string, signer key) (strin
 type key struct {
 	Seed    string
 	Address string
-	Account horizon.Account
+	Account *horizon.Account
 	Keypair *keypair.Full
 	Exists  bool
-	SeqNum  int64
 }
 
 func initKeys() []key {

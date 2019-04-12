@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
@@ -20,16 +19,6 @@ import (
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (xdr.SequenceNumber, error)
-}
-
-// FromHorizonAccount is a convenience method that maps an account returned by
-// horizonclient to a txnbuild.Account.
-func FromHorizonAccount(horizonAccount horizon.Account) Account {
-	seqnum, _ := horizonAccount.GetSequenceNumber()
-	return Account{
-		ID:             horizonAccount.AccountID,
-		SequenceNumber: seqnum,
-	}
 }
 
 // Transaction represents a Stellar Transaction.

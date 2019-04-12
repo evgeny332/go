@@ -514,10 +514,9 @@ func main() {
 
 func exampleCreateAccount(client *horizonclient.Client, mock bool) horizon.TransactionSuccess {
 	keys := initKeys()
-	accountRequest := horizonclient.AccountRequest{AccountId: keys[0].Address}
-	horizonSourceAccount, err := client.AccountDetail(accountRequest)
+	accountRequest := horizonclient.AccountRequest{AccountID: keys[0].Address}
+	sourceAccount, err := client.AccountDetail(accountRequest)
 	dieIfError("loadaccount", err)
-	sourceAccount := mapAccounts(horizonSourceAccount)
 
 	// newAccountKeypair := createKeypair()
 	createAccount := txnbuild.CreateAccount{
@@ -526,7 +525,7 @@ func exampleCreateAccount(client *horizonclient.Client, mock bool) horizon.Trans
 	}
 
 	tx := txnbuild.Transaction{
-		SourceAccount: sourceAccount,
+		SourceAccount: &sourceAccount,
 		Operations:    []txnbuild.Operation{&createAccount},
 		Network:       network.TestNetworkPassphrase,
 	}
@@ -597,10 +596,6 @@ func createKeypair() *keypair.Full {
 	log.Println("Address:", pair.Address())
 
 	return pair
-}
-
-func mapAccounts(horizonAccount horizon.Account) *horizon.Account {
-	return &horizonAccount
 }
 
 // PrintHorizonError decodes and prints the contents of horizon.Error.Problem.
