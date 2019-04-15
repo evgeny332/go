@@ -11,6 +11,7 @@ import (
 	horizonclient "github.com/stellar/go/exp/clients/horizon"
 	"github.com/stellar/go/exp/txnbuild"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 
 	"github.com/stellar/go/keypair"
@@ -145,12 +146,46 @@ func Initialise(client *horizonclient.Client, keys []key) {
 	}
 }
 
+// TXError deliberately creates a bad transaction to trigger an error response from Horizon. This code
+// demonstrates how to retrieve and inspect the error.
+func TXError(client *horizonclient.Client, keys []key) {
+	keys = loadAccounts(client, keys)
+	// Create a bump seq operation
+	// Set the seq number to 1 (invalid)
+	// Create the transaction
+	txe, err := bumpSequence(keys[0].Account, -1, keys[0])
+	dieIfError("Problem building createAccount op", err)
+	resp := submit(client, txe)
+	// Submit
+	// Inspect and print error
+	fmt.Println(resp.TransactionSuccessToString())
+}
+
 func fund(address string) (resp *http.Response, err error) {
 	resp, err = http.Get("https://friendbot.stellar.org/?addr=" + address)
 	if err != nil {
 		return nil, err
 	}
 	return
+}
+
+func bumpSequence(source *horizon.Account, seqNum int64, signer key) (string, error) {
+	bumpSequenceOp := txnbuild.BumpSequence{
+		BumpTo: seqNum,
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: source,
+		Operations:    []txnbuild.Operation{&bumpSequenceOp},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't serialise transaction")
+	}
+
+	return txeBase64, nil
 }
 
 func createAccount(source *horizon.Account, dest string, signer key) (string, error) {
@@ -369,6 +404,31 @@ func printHorizonError(hError *horizonclient.Error) error {
 		return errors.Wrap(err, "Couldn't read Envelope")
 	}
 	log.Println("TransactionEnvelope XDR:", envelope)
+
+	log.Println("***************")
+	txe := envelope.Tx
+	log.Println("Transaction:", txe)
+	aid := txe.SourceAccount.MustEd25519()
+	decodedAID, err := strkey.Encode(strkey.VersionByteAccountID, aid[:])
+	if err != nil {
+		log.Println("Couldn't decode account ID:", err)
+	} else {
+		log.Printf("SourceAccount (%s): %s\n", txe.SourceAccount.Type, decodedAID)
+	}
+	log.Println("Fee:", txe.Fee)
+	log.Println("SequenceNumber:", txe.SeqNum)
+	log.Println("TimeBounds:", txe.TimeBounds)
+	log.Println("Memo:", txe.Memo)
+	log.Println("Operations:", txe.Operations)
+	log.Println("Ext:", txe.Ext)
+
+	// SourceAccount AccountId
+	// Fee           Uint32
+	// SeqNum        SequenceNumber
+	// TimeBounds    *TimeBounds
+	// Memo          Memo
+	// Operations    []Operation `xdrmaxsize:"100"`
+	// Ext           TransactionExt
 
 	return nil
 }

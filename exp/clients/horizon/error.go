@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"encoding/json"
+	"fmt"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
@@ -26,6 +27,7 @@ func (herr *Error) Envelope() (*xdr.TransactionEnvelope, error) {
 	if !ok {
 		return nil, errors.New("type assertion failed")
 	}
+	fmt.Println("Envelope error:", b64)
 
 	err := xdr.SafeUnmarshalBase64(b64, &result)
 	if err != nil {
