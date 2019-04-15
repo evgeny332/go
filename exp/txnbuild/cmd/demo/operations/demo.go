@@ -1,8 +1,7 @@
-// Demo is an interactive demonstration of the Go SDK using the Stellar TestNet.
-package main
+// Package demo is an interactive demonstration of the Go SDK using the Stellar TestNet.
+package demo
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,25 +18,6 @@ import (
 
 const friendbotAddress = "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"
 
-func main() {
-	resetF := flag.Bool("reset", false, "Remove all testing state")
-	initialiseF := flag.Bool("initialise", false, "Set up test accounts")
-	flag.Parse()
-
-	keys := initKeys()
-	client := horizonclient.DefaultTestNetClient
-
-	if *resetF {
-		fmt.Println("Resetting TestNet state...")
-		reset(client, keys)
-		fmt.Println("Reset complete.")
-	} else if *initialiseF {
-		fmt.Println("Initialising TestNet accounts...")
-		initialise(client, keys)
-		fmt.Println("Initialisation complete.")
-	}
-}
-
 func loadAccounts(client *horizonclient.Client, keys []key) []key {
 	for i, k := range keys {
 		accountRequest := horizonclient.AccountRequest{AccountID: k.Address}
@@ -51,7 +31,8 @@ func loadAccounts(client *horizonclient.Client, keys []key) []key {
 	return keys
 }
 
-func reset(client *horizonclient.Client, keys []key) {
+// Reset removes all test accounts created by this demo. All funds are transferred back to Friendbot.
+func Reset(client *horizonclient.Client, keys []key) {
 	keys = loadAccounts(client, keys)
 	for _, k := range keys {
 		if !k.Exists {
@@ -139,7 +120,9 @@ func reset(client *horizonclient.Client, keys []key) {
 	}
 }
 
-func initialise(client *horizonclient.Client, keys []key) {
+// Initialise funds an initial set of accounts for use with other demo operations. The first account is
+// funded from Friendbot; subseqeuent accounts are created and funded from this first account.
+func Initialise(client *horizonclient.Client, keys []key) {
 	// Fund the first account from friendbot
 	fmt.Printf("    Funding account %s from friendbot...\n", keys[0].Address)
 	_, err := fund(keys[0].Address)
@@ -185,9 +168,29 @@ func createAccount(source *horizon.Account, dest string, signer key) (string, er
 	return txeBase64, nil
 }
 
-func deleteData(source *horizon.Account, k string, signer key) (string, error) {
+func deleteData(source *horizon.Account, dataKey string, signer key) (string, error) {
 	manageDataOp := txnbuild.ManageData{
-		Name: k,
+		Name: dataKey,
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: source,
+		Operations:    []txnbuild.Operation{&manageDataOp},
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't serialise transaction")
+	}
+
+	return txeBase64, nil
+}
+
+func manageData(source *horizon.Account, dataKey string, dataValue string, signer key) (string, error) {
+	manageDataOp := txnbuild.ManageData{
+		Name:  dataKey,
+		Value: []byte(dataValue),
 	}
 
 	tx := txnbuild.Transaction{
@@ -286,7 +289,7 @@ type key struct {
 	Exists  bool
 }
 
-func initKeys() []key {
+func InitKeys() []key {
 	// Accounts created on testnet
 	keys := []key{
 		// test0
