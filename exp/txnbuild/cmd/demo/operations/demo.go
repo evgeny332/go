@@ -16,6 +16,11 @@ import (
 	"github.com/stellar/go/keypair"
 )
 
+// TODO:
+// 1) Randomly generate the test account addresses. Use a file to store them so they can be deleted/referred to.
+// 2) Clean up printing output
+// 3) Add missing operations
+
 const friendbotAddress = "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR"
 
 func loadAccounts(client *horizonclient.Client, keys []key) []key {
